@@ -26,18 +26,28 @@ class IndividualUserData(BaseModel):
     user_uuid: UUID
     email: str
 
-class GetFullData(BaseModel):
+class GetFullIndividualData(BaseModel):
     id: int
     uuid: UUID
     fullname: str
-    # company_name: str
     email: str
-    # tax_number: str
     user_type: UserTypeEnum
     status: UserStatusEnum
 
-class GetFullDataResponse(BaseModel):
-    data: GetFullData
+class GetFullIndividualDataResponse(BaseModel):
+    data: GetFullIndividualData
+
+class GetFullBusinessData(BaseModel):
+    id: int
+    uuid: UUID
+    company_name: str
+    email: str
+    tax_number: str
+    user_type: UserTypeEnum
+    status: UserStatusEnum
+
+class GetFullBusinessDataResponse(BaseModel):
+    data: GetFullBusinessData
 
 class IndividualUserResponse(BaseModel):
     data: IndividualUserData
