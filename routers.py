@@ -8,8 +8,8 @@ from database import AsyncSession, get_async_session
 from auth import create_access_token, get_current_user, get_password_hash, verify_password
 from models import OTP, OTPPurposeEnum, User, UserStatusEnum, UserTypeEnum
 from schemas import (BusinessUserData, CreateBusinessUser, BusinessUserResponse,
-                      CreateIndividualUser, GetFullBusinessData, GetFullBusinessDataResponse, 
-                      GetFullIndividualData, GetFullIndividualDataResponse, IndividualUserResponse,
+                      CreateIndividualUser,
+                      GetFullData, GetFullDataResponse, IndividualUserResponse,
                         GetOTP, GetOTPResponse, IndividualUserData)
 
 router = APIRouter()
@@ -36,20 +36,18 @@ async def get_otp(user_uuid: UUID, email: str, purpose: OTPPurposeEnum, session:
     stmt_user = select(User.c.user_uuid, User.c.id, User.c.email, OTP.c.purpose).join(OTP, OTP.c.user_id == User.c.id).where(User.c.user_uuid == user_uuid, User.c.email == email, OTP.c.purpose == purpose)
     result_user = await session.execute(stmt_user)
     row_user = result_user.fetchone()
-    for _ in row_user:
-        # print(_)
-        if _ is None:
-            raise HTTPException("No such user")
-    stmt = select(OTP.c.otp_code).where(row_user[1] == OTP.c.user_id).order_by(OTP.c.id.desc())
-    result = await session.execute(stmt)
-    row = result.fetchone()[0] # with [0] = otp_code only
-    print(row)
+    if row_user is None:
+        raise HTTPException(status_code=400, detail="No such user")
+    stmt_otp = select(OTP.c.otp_code).where(row_user[1] == OTP.c.user_id).order_by(OTP.c.id.desc())
+    result = await session.execute(stmt_otp)
+    row_otp = result.fetchone()[0] # with [0] = otp_code only
+    print(row_otp)
     data = GetOTP(
-        otp_code=row
+        otp_code=row_otp
     )
     return GetOTPResponse(data=data)
 
-@router.get("/account/setup/individual")
+@router.post("/account/setup")
 async def verify_user(user_uuid: UUID, otp_code: int, session: AsyncSession = Depends(get_async_session)):
     stmt_verify = select(User.c.id, User.c.user_uuid, OTP.c.otp_code).join(OTP, User.c.id == OTP.c.user_id).where(user_uuid == User.c.user_uuid, otp_code == OTP.c.otp_code)
     result_verify = await session.execute(stmt_verify)
@@ -61,64 +59,31 @@ async def verify_user(user_uuid: UUID, otp_code: int, session: AsyncSession = De
     row_otp_code = result_otp_code.fetchone()[0]
     if row_otp_code != otp_code:
         raise HTTPException(status_code=400, detail="Wrong OTP code")
-    stmt_user = select(User.c.id, User.c.user_uuid, User.c.fullname, User.c.email, User.c.user_type).where(User.c.user_uuid == user_uuid)
+    stmt_user = select(User.c.id, User.c.user_uuid, User.c.fullname, User.c.email, User.c.user_type, User.c.company_name, User.c.tax_number).where(User.c.user_uuid == user_uuid)
     result_user = await session.execute(stmt_user)
     row_user = result_user.fetchone()
     # for _ in row_user:
     #     print(_)
     stmt_check_status = select(User.c.status).where(user_uuid == User.c.user_uuid)
-    result_check_status = await session.execute(stmt_check_status)
-    row_check_status = result_check_status.fetchone()[0]
-    if row_check_status is UserStatusEnum.ACTIVE:
-        raise HTTPException(status_code=400, detail="User status is already ACTIVE")
-    stmt_update_status = update(User).where(user_uuid == User.c.user_uuid).values(status = UserStatusEnum.ACTIVE)
-    await session.execute(stmt_update_status)
-    await session.commit()
-    data = GetFullIndividualData(
+    data = GetFullData(
         id=row_user.id,
         uuid=row_user.user_uuid,
         fullname=row_user.fullname,
-        email=row_user.email,
-        user_type=row_user.user_type,
-        status=UserStatusEnum.ACTIVE
-    )
-    return GetFullIndividualDataResponse(data=data)
-
-@router.get("/account/setup/business")
-async def verify_user(user_uuid: UUID, otp_code: int, session: AsyncSession = Depends(get_async_session)):
-    stmt_verify = select(User.c.id, User.c.user_uuid, OTP.c.otp_code).join(OTP, User.c.id == OTP.c.user_id).where(user_uuid == User.c.user_uuid, otp_code == OTP.c.otp_code)
-    result_verify = await session.execute(stmt_verify)
-    row_verify = result_verify.fetchone()
-    if row_verify is None:
-        raise HTTPException(status_code=400, detail="Wrong UUID or OTP code")
-    stmt_otp_code = select(OTP.c.otp_code).where(row_verify[0] == OTP.c.user_id).order_by(OTP.c.id.desc())
-    result_otp_code = await session.execute(stmt_otp_code)
-    row_otp_code = result_otp_code.fetchone()[0]
-    if row_otp_code != otp_code:
-        raise HTTPException(status_code=400, detail="Wrong OTP code")
-    stmt_user = select(User.c.id, User.c.user_uuid, User.c.company_name, User.c.email, User.c.tax_number, User.c.user_type).where(User.c.user_uuid == user_uuid)
-    result_user = await session.execute(stmt_user)
-    row_user = result_user.fetchone()
-    # for _ in row_user:
-    #     print(_)
-    stmt_check_status = select(User.c.status).where(user_uuid == User.c.user_uuid)
-    result_check_status = await session.execute(stmt_check_status)
-    row_check_status = result_check_status.fetchone()[0]
-    if row_check_status is UserStatusEnum.ACTIVE:
-        raise HTTPException(status_code=400, detail="User status is already ACTIVE")
-    stmt_update_status = update(User).where(user_uuid == User.c.user_uuid).values(status = UserStatusEnum.ACTIVE)
-    await session.execute(stmt_update_status)
-    await session.commit()
-    data = GetFullBusinessData(
-        id=row_user.id,
-        uuid=row_user.user_uuid,
         company_name=row_user.company_name,
         email=row_user.email,
         tax_number=row_user.tax_number,
         user_type=row_user.user_type,
         status=UserStatusEnum.ACTIVE
     )
-    return GetFullBusinessDataResponse(data=data)
+    # print(GetFullDataResponse(data=data))
+    result_check_status = await session.execute(stmt_check_status)
+    row_check_status = result_check_status.fetchone()[0]
+    if row_check_status is UserStatusEnum.ACTIVE:
+        raise HTTPException(status_code=400, detail="User status is already ACTIVE")
+    stmt_update_status = update(User).where(user_uuid == User.c.user_uuid).values(status = UserStatusEnum.ACTIVE)
+    await session.execute(stmt_update_status)
+    await session.commit()
+    return GetFullDataResponse(data=data)
 
 @router.post("/register/individual")
 async def create_individual_user(individual_user: CreateIndividualUser, session: AsyncSession = Depends(get_async_session)):
