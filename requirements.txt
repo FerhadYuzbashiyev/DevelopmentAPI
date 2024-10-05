@@ -1,0 +1,10 @@
+fastapi[all]
+sqlalchemy
+psycopg2
+uuid
+pydantic
+alembic
+uvicorn
+asyncpg
+bcrypt
+requests
