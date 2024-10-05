@@ -41,7 +41,7 @@ async def get_otp(user_uuid: UUID, email: str, purpose: OTPPurposeEnum, session:
     stmt_otp = select(OTP.c.otp_code).where(row_user[1] == OTP.c.user_id).order_by(OTP.c.id.desc())
     result = await session.execute(stmt_otp)
     row_otp = result.fetchone()[0] # with [0] = otp_code only
-    print(row_otp)
+    # print(row_otp)
     data = GetOTP(
         otp_code=row_otp
     )
