@@ -7,10 +7,6 @@ from models import metadata
 from alembic import context
 from config import DB_HOST, DB_PORT, DB_USER, DB_NAME, DB_PASS
 
-# user_type_enum = Enum('business', 'individual')
-# contact_verification_enum = Enum('verified', 'unverified')
-# status_enum = Enum('active', 'inactive')
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

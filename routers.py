@@ -10,7 +10,7 @@ from models import OTP, OTPPurposeEnum, User, UserStatusEnum, UserTypeEnum
 from schemas import (BusinessUserData, CreateBusinessUser, BusinessUserResponse,
                       CreateIndividualUser,
                       GetFullData, GetFullDataResponse, IndividualUserResponse,
-                        GetOTP, GetOTPResponse, IndividualUserData)
+                        GetOTP, GetOTPResponse, IndividualUserData, UserAuth)
 
 router = APIRouter()
 
@@ -158,6 +158,11 @@ async def deluser(id: int, session: AsyncSession = Depends(get_async_session)):
     await session.commit()
     return {"status": 200, "detail": "Successfully deleted"}
 
+@router.get("/")
+async def test():
+    return "Test"
+
 @router.get("/protected-route")
-async def protected_route(current_user: Annotated[CreateIndividualUser, Depends(get_current_user)]):
-    return {"message": f"Hello, {current_user.email}!"}
+async def protected_route(current_user: Annotated[UserAuth, Depends(get_current_user)]):
+    print(current_user)
+    return {"message": f"Hello, {current_user[0]}!"}

@@ -35,12 +35,11 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], sessio
         user_id = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-        stmt = select(User).where(User.c.id == user_id)
+        stmt = select(User.c.email).where(User.c.id == user_id)
         result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
-
+        user = result.fetchone()
         if user is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
         return user
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
