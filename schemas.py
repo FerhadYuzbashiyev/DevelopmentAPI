@@ -5,6 +5,9 @@ from enum import Enum
 
 from models import OTPPurposeEnum, UserStatusEnum, UserTypeEnum
 
+class UserAuth(BaseModel):
+    email: str
+
 class CreateIndividualUser(BaseModel):
     fullname: str
     email: str
